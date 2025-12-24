@@ -7,6 +7,9 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import ba.woodcraft.ui.controller.AdminController;
+import ba.woodcraft.ui.controller.UserController;
+import ba.woodcraft.ui.controller.SceneNavigator;
 
 public class LoginController {
 
@@ -26,7 +29,6 @@ public class LoginController {
         }
 
         UserDAO.DbUser user = userDAO.findByUsername(username);
-        System.out.println("DEBUG username=" + username + " -> " + user);
 
         if (user == null) {
             prikazi("Greška", "Korisnik ne postoji.");
@@ -38,7 +40,21 @@ public class LoginController {
             return;
         }
 
-        prikazi("Uspjeh", "Ulogovan kao: " + user.role());
+        // ✅ Redirect po ulozi
+        String role = user.role();
+
+        if ("ADMIN".equalsIgnoreCase(role)) {
+            AdminController c = SceneNavigator.showWithController("view/admin.fxml");
+            c.setWelcome(user.username());
+        } else {
+            UserController c = SceneNavigator.showWithController("view/user.fxml");
+            c.setWelcome(user.username());
+        }
+    }
+
+    @FXML
+    public void onOpenRegister(ActionEvent event) {
+        SceneNavigator.show("view/register.fxml");
     }
 
     private void prikazi(String naslov, String poruka) {

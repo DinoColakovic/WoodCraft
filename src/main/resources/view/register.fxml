@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Hyperlink?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="ba.woodcraft.ui.controller.RegisterController"
+      alignment="CENTER" spacing="12">
+
+    <Label text="Registracija" />
+
+    <TextField fx:id="usernameField" promptText="Username" maxWidth="250"/>
+    <PasswordField fx:id="passwordField" promptText="Password" maxWidth="250"/>
+    <PasswordField fx:id="confirmField" promptText="Potvrdi password" maxWidth="250"/>
+
+    <Button text="Kreiraj račun" maxWidth="250" onAction="#onRegister"/>
+
+    <Hyperlink text="Već imate račun? Prijavite se" onAction="#onBackToLogin"/>
+</VBox>

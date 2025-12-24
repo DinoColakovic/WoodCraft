@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="ba.woodcraft.ui.controller.AdminController"
+      alignment="CENTER" spacing="12">
+
+    <Label text="Admin Dashboard" />
+    <Label fx:id="welcomeLabel" text="Dobrodošli, admin!" />
+
+    <Button text="Logout" onAction="#onLogout" maxWidth="200"/>
+</VBox>

@@ -1,20 +1,16 @@
 package ba.woodcraft;
 
+import ba.woodcraft.ui.controller.SceneNavigator;
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public class MainApp extends Application {
 
     @Override
-    public void start(Stage stage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/view/login.fxml"));
-        Scene scene = new Scene(loader.load(), 900, 600);
-
-        stage.setTitle("WoodCraft");
-        stage.setScene(scene);
-        stage.show();
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("WoodCraft");
+        SceneNavigator.init(primaryStage);
+        SceneNavigator.show("view/login.fxml");
     }
 
     public static void main(String[] args) {
