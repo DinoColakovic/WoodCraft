@@ -29,6 +29,8 @@ public class SelectionOverlay {
     private Bounds dragStartBounds;
     private double startLayoutX;
     private double startLayoutY;
+    private double startTranslateX;
+    private double startTranslateY;
     private double startScaleX;
     private double startScaleY;
     private double startRotate;
@@ -151,6 +153,8 @@ public class SelectionOverlay {
         dragStartParent = toParentPoint(event);
         startLayoutX = target.getLayoutX();
         startLayoutY = target.getLayoutY();
+        startTranslateX = target.getTranslateX();
+        startTranslateY = target.getTranslateY();
         event.consume();
     }
 
@@ -158,8 +162,10 @@ public class SelectionOverlay {
         if (target == null || dragMode != DragMode.MOVE) return;
         Point2D current = toParentPoint(event);
         Point2D delta = current.subtract(dragStartParent);
-        target.setLayoutX(startLayoutX + delta.getX());
-        target.setLayoutY(startLayoutY + delta.getY());
+        target.setLayoutX(startLayoutX);
+        target.setLayoutY(startLayoutY);
+        target.setTranslateX(startTranslateX + delta.getX());
+        target.setTranslateY(startTranslateY + delta.getY());
         update();
         event.consume();
     }

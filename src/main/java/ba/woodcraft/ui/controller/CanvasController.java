@@ -23,6 +23,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.CubicCurve;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
+import javafx.geometry.Pos;
 
 public class CanvasController {
 
@@ -108,6 +109,8 @@ public class CanvasController {
 
         zoomGroup.setPickOnBounds(false);
         drawingPane.setPickOnBounds(true);
+        canvasHost.setAlignment(Pos.CENTER);
+        StackPane.setAlignment(zoomGroup, Pos.CENTER);
 
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(canvasHost.widthProperty());
@@ -425,7 +428,7 @@ public class CanvasController {
         gc.setLineWidth(1.0);
         gc.setFill(Color.web("#374151"));
 
-        double maxUnits = drawingPane.getPrefWidth();
+        double maxUnits = width / zoom;
         for (double unit = 0; unit <= maxUnits; unit += RULER_MINOR_TICK) {
             double x = unit * zoom;
             if (x > width) {
@@ -454,7 +457,7 @@ public class CanvasController {
         gc.setLineWidth(1.0);
         gc.setFill(Color.web("#374151"));
 
-        double maxUnits = drawingPane.getPrefHeight();
+        double maxUnits = height / zoom;
         for (double unit = 0; unit <= maxUnits; unit += RULER_MINOR_TICK) {
             double y = unit * zoom;
             if (y > height) {
