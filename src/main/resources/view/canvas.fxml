@@ -29,6 +29,7 @@
                 <Separator orientation="VERTICAL"/>
 
                 <Button text="Clear" onAction="#onClear"/>
+                <Button text="Export PDF" onAction="#onExportPdf"/>
                 <Button text="Logout" onAction="#onLogout"/>
             </ToolBar>
             <Canvas fx:id="topRuler" height="24" style="-fx-background-color: #f3f4f6;"/>

@@ -263,19 +263,32 @@ public class SelectionOverlay {
     public void update() {
         if (target == null || host == null) return;
         overlayGroup.toFront();
-        Bounds bounds = target.getBoundsInLocal();
-        overlayGroup.getTransforms().setAll(new Affine(target.getLocalToParentTransform()));
-        outline.setX(bounds.getMinX());
-        outline.setY(bounds.getMinY());
-        outline.setWidth(bounds.getWidth());
-        outline.setHeight(bounds.getHeight());
+        Bounds localBounds = target.getBoundsInLocal();
+        Affine transform = new Affine(target.getLocalToParentTransform());
+        double scaleX = Math.hypot(transform.getMxx(), transform.getMyx());
+        double scaleY = Math.hypot(transform.getMxy(), transform.getMyy());
+        double rotation = Math.toDegrees(Math.atan2(transform.getMyx(), transform.getMxx()));
 
-        double left = bounds.getMinX() - HANDLE_SIZE / 2.0;
-        double right = bounds.getMaxX() - HANDLE_SIZE / 2.0;
-        double top = bounds.getMinY() - HANDLE_SIZE / 2.0;
-        double bottom = bounds.getMaxY() - HANDLE_SIZE / 2.0;
-        double centerX = bounds.getMinX() + bounds.getWidth() / 2.0 - HANDLE_SIZE / 2.0;
-        double centerY = bounds.getMinY() + bounds.getHeight() / 2.0 - HANDLE_SIZE / 2.0;
+        Point2D center = target.localToParent(
+                localBounds.getMinX() + localBounds.getWidth() / 2.0,
+                localBounds.getMinY() + localBounds.getHeight() / 2.0
+        );
+        double width = localBounds.getWidth() * scaleX;
+        double height = localBounds.getHeight() * scaleY;
+
+        overlayGroup.getTransforms().setAll(new javafx.scene.transform.Rotate(rotation, center.getX(), center.getY()));
+        outline.setStrokeWidth(1.5);
+        outline.setX(center.getX() - width / 2.0);
+        outline.setY(center.getY() - height / 2.0);
+        outline.setWidth(width);
+        outline.setHeight(height);
+
+        double left = outline.getX() - HANDLE_SIZE / 2.0;
+        double right = outline.getX() + outline.getWidth() - HANDLE_SIZE / 2.0;
+        double top = outline.getY() - HANDLE_SIZE / 2.0;
+        double bottom = outline.getY() + outline.getHeight() - HANDLE_SIZE / 2.0;
+        double centerX = outline.getX() + outline.getWidth() / 2.0 - HANDLE_SIZE / 2.0;
+        double centerY = outline.getY() + outline.getHeight() / 2.0 - HANDLE_SIZE / 2.0;
 
         handles[0].setX(left);
         handles[0].setY(top);
@@ -294,7 +307,7 @@ public class SelectionOverlay {
         handles[7].setX(left);
         handles[7].setY(centerY);
 
-        rotateHandle.setCenterX(bounds.getMinX() + bounds.getWidth() / 2.0);
-        rotateHandle.setCenterY(bounds.getMinY() - ROTATION_HANDLE_OFFSET);
+        rotateHandle.setCenterX(outline.getX() + outline.getWidth() / 2.0);
+        rotateHandle.setCenterY(outline.getY() - ROTATION_HANDLE_OFFSET);
     }
 }
