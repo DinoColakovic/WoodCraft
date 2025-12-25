@@ -10,6 +10,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.MouseEvent;
@@ -20,6 +21,7 @@ import javafx.scene.shape.Rectangle;
 public class CanvasController {
 
     private enum Tool {
+        SELECT,
         FREEHAND,
         LINE,
         RECTANGLE,
@@ -35,9 +37,12 @@ public class CanvasController {
     @FXML private ToggleButton rectangleTool;
     @FXML private ToggleButton circleTool;
     @FXML private ToggleButton bezierTool;
+    @FXML private ToggleButton selectTool;
 
     private Tool activeTool = Tool.FREEHAND;
     private Drawable activeShape;
+    private Node selectedNode;
+    private SelectionOverlay selectionOverlay;
 
     private double zoom = 1.0;
     private static final double ZOOM_STEP = 1.1;
@@ -51,6 +56,7 @@ public class CanvasController {
         rectangleTool.setToggleGroup(toolGroup);
         circleTool.setToggleGroup(toolGroup);
         bezierTool.setToggleGroup(toolGroup);
+        selectTool.setToggleGroup(toolGroup);
 
         // Default: no tool selected => FREEHAND
         toolGroup.selectToggle(null);
@@ -61,13 +67,24 @@ public class CanvasController {
         allowDeselectToFreehand(rectangleTool, toolGroup);
         allowDeselectToFreehand(circleTool, toolGroup);
         allowDeselectToFreehand(bezierTool, toolGroup);
+        allowDeselectToFreehand(selectTool, toolGroup);
 
         toolGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
-            if (newToggle == null) activeTool = Tool.FREEHAND;
-            else if (newToggle == lineTool) activeTool = Tool.LINE;
-            else if (newToggle == rectangleTool) activeTool = Tool.RECTANGLE;
-            else if (newToggle == circleTool) activeTool = Tool.CIRCLE;
-            else if (newToggle == bezierTool) activeTool = Tool.BEZIER;
+            if (newToggle == null) {
+                activeTool = Tool.FREEHAND;
+                clearSelection();
+                selectionOverlay.setActive(false);
+            } else if (newToggle == selectTool) {
+                activeTool = Tool.SELECT;
+                selectionOverlay.setActive(true);
+            } else {
+                clearSelection();
+                selectionOverlay.setActive(false);
+                if (newToggle == lineTool) activeTool = Tool.LINE;
+                else if (newToggle == rectangleTool) activeTool = Tool.RECTANGLE;
+                else if (newToggle == circleTool) activeTool = Tool.CIRCLE;
+                else if (newToggle == bezierTool) activeTool = Tool.BEZIER;
+            }
         });
 
         zoomGroup.setPickOnBounds(false);
@@ -77,6 +94,10 @@ public class CanvasController {
         clip.widthProperty().bind(canvasHost.widthProperty());
         clip.heightProperty().bind(canvasHost.heightProperty());
         canvasHost.setClip(clip);
+
+        selectionOverlay = new SelectionOverlay();
+        selectionOverlay.attachTo(drawingPane);
+        selectionOverlay.setActive(false);
 
         applyZoom();
     }
@@ -117,6 +138,9 @@ public class CanvasController {
     @FXML
     public void onClear() {
         drawingPane.getChildren().clear();
+        selectionOverlay.attachTo(drawingPane);
+        clearSelection();
+        selectionOverlay.setActive(activeTool == Tool.SELECT);
     }
 
     @FXML
@@ -140,6 +164,14 @@ public class CanvasController {
 
     @FXML
     public void onMousePressed(MouseEvent event) {
+        if (activeTool == Tool.SELECT) {
+            Node picked = findSelectableNode(event);
+            if (picked == null) clearSelection();
+            else setSelectedNode(picked);
+            return;
+        }
+
+        clearSelection();
         Point2D p = getCanvasPoint(event);
         activeShape = createShape(p.getX(), p.getY());
         if (activeShape != null) drawingPane.getChildren().add(activeShape.getNode());
@@ -147,6 +179,9 @@ public class CanvasController {
 
     @FXML
     public void onMouseDragged(MouseEvent event) {
+        if (activeTool == Tool.SELECT) {
+            return;
+        }
         if (activeShape != null) {
             Point2D p = getCanvasPoint(event);
             activeShape.update(p.getX(), p.getY());
@@ -155,11 +190,39 @@ public class CanvasController {
 
     @FXML
     public void onMouseReleased(MouseEvent event) {
+        if (activeTool == Tool.SELECT) {
+            return;
+        }
         if (activeShape != null) {
             Point2D p = getCanvasPoint(event);
             activeShape.update(p.getX(), p.getY());
             activeShape = null;
         }
+    }
+
+    private void setSelectedNode(Node node) {
+        selectedNode = node;
+        selectionOverlay.setTarget(node);
+    }
+
+    private void clearSelection() {
+        selectedNode = null;
+        selectionOverlay.clear();
+    }
+
+    private Node findSelectableNode(MouseEvent event) {
+        Point2D scenePoint = new Point2D(event.getSceneX(), event.getSceneY());
+        for (int i = drawingPane.getChildren().size() - 1; i >= 0; i--) {
+            Node node = drawingPane.getChildren().get(i);
+            if (!node.isVisible() || selectionOverlay.isOverlayNode(node)) {
+                continue;
+            }
+            Point2D localPoint = node.sceneToLocal(scenePoint);
+            if (node.contains(localPoint)) {
+                return node;
+            }
+        }
+        return null;
     }
 
     private Drawable createShape(double x, double y) {
@@ -169,6 +232,7 @@ public class CanvasController {
             case RECTANGLE -> new RectangleShape(x, y);
             case CIRCLE -> new CircleShape(x, y);
             case BEZIER -> new BezierCurveShape(x, y);
+            case SELECT -> null;
         };
     }
 }

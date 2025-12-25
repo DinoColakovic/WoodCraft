@@ -12,6 +12,7 @@
 
     <top>
         <ToolBar>
+            <ToggleButton fx:id="selectTool" text="Select"/>
             <ToggleButton fx:id="lineTool" text="Line"/>
             <ToggleButton fx:id="rectangleTool" text="Rectangle"/>
             <ToggleButton fx:id="circleTool" text="Circle"/>
