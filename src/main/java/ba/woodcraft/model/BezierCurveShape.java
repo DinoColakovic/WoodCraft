@@ -2,7 +2,7 @@ package ba.woodcraft.model;
 
 import javafx.scene.Node;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.CubicCurve;
+import javafx.scene.shape.QuadCurve;
 
 public class BezierCurveShape implements Drawable {
     private final double startX;
