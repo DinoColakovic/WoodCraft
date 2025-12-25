@@ -44,6 +44,12 @@ public class CanvasController {
         BEZIER
     }
 
+    private enum BezierStage {
+        NONE,
+        END,
+        CONTROL
+    }
+
     @FXML private StackPane canvasHost;
     @FXML private Group zoomGroup;
     @FXML private Pane drawingPane;
@@ -58,6 +64,8 @@ public class CanvasController {
 
     private Tool activeTool = Tool.FREEHAND;
     private Drawable activeShape;
+    private BezierCurveShape activeBezier;
+    private BezierStage bezierStage = BezierStage.NONE;
     private Node selectedNode;
     private SelectionOverlay selectionOverlay;
     private Circle snapIndicator;
@@ -98,11 +106,13 @@ public class CanvasController {
         toolGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
             if (newToggle == null) {
                 activeTool = Tool.FREEHAND;
+                resetBezierState();
                 clearSelection();
                 selectionOverlay.setActive(false);
                 hideSnapIndicator();
             } else if (newToggle == selectTool) {
                 activeTool = Tool.SELECT;
+                resetBezierState();
                 selectionOverlay.setActive(true);
                 hideSnapIndicator();
             } else {
@@ -113,6 +123,9 @@ public class CanvasController {
                 else if (newToggle == rectangleTool) activeTool = Tool.RECTANGLE;
                 else if (newToggle == circleTool) activeTool = Tool.CIRCLE;
                 else if (newToggle == bezierTool) activeTool = Tool.BEZIER;
+                if (activeTool != Tool.BEZIER) {
+                    resetBezierState();
+                }
             }
         });
 
@@ -193,6 +206,7 @@ public class CanvasController {
         clearSelection();
         selectionOverlay.setActive(activeTool == Tool.SELECT);
         hideSnapIndicator();
+        resetBezierState();
     }
 
     @FXML
@@ -247,14 +261,22 @@ public class CanvasController {
 
         clearSelection();
         Point2D p = snapPoint != null ? snapPoint : getCanvasPoint(event);
-        activeShape = createShape(p.getX(), p.getY());
-        if (activeShape != null) drawingPane.getChildren().add(activeShape.getNode());
+        if (activeTool == Tool.BEZIER) {
+            handleBezierPress(p);
+        } else {
+            activeShape = createShape(p.getX(), p.getY());
+            if (activeShape != null) drawingPane.getChildren().add(activeShape.getNode());
+        }
         hideSnapIndicator();
     }
 
     @FXML
     public void onMouseDragged(MouseEvent event) {
         if (activeTool == Tool.SELECT) {
+            return;
+        }
+        if (activeTool == Tool.BEZIER) {
+            updateBezierPreview(getCanvasPoint(event));
             return;
         }
         if (activeShape != null) {
@@ -268,6 +290,9 @@ public class CanvasController {
         if (activeTool == Tool.SELECT) {
             return;
         }
+        if (activeTool == Tool.BEZIER) {
+            return;
+        }
         if (activeShape != null) {
             Point2D p = getCanvasPoint(event);
             activeShape.update(p.getX(), p.getY());
@@ -278,7 +303,7 @@ public class CanvasController {
 
     @FXML
     public void onMouseMoved(MouseEvent event) {
-        if (!isSnapToolActive() || activeShape != null) {
+        if (!isSnapToolActive() || activeShape != null || (activeTool == Tool.BEZIER && bezierStage != BezierStage.NONE)) {
             hideSnapIndicator();
             return;
         }
@@ -334,6 +359,41 @@ public class CanvasController {
             case BEZIER -> new BezierCurveShape(x, y);
             case SELECT -> null;
         };
+    }
+
+    private void handleBezierPress(Point2D point) {
+        if (bezierStage == BezierStage.NONE) {
+            activeBezier = new BezierCurveShape(point.getX(), point.getY());
+            drawingPane.getChildren().add(activeBezier.getNode());
+            bezierStage = BezierStage.END;
+            return;
+        }
+        if (bezierStage == BezierStage.END && activeBezier != null) {
+            activeBezier.setEnd(point.getX(), point.getY());
+            bezierStage = BezierStage.CONTROL;
+            return;
+        }
+        if (bezierStage == BezierStage.CONTROL && activeBezier != null) {
+            activeBezier.setControlPoints(point.getX(), point.getY());
+            activeBezier = null;
+            bezierStage = BezierStage.NONE;
+        }
+    }
+
+    private void updateBezierPreview(Point2D point) {
+        if (activeBezier == null) {
+            return;
+        }
+        if (bezierStage == BezierStage.END) {
+            activeBezier.setEnd(point.getX(), point.getY());
+        } else if (bezierStage == BezierStage.CONTROL) {
+            activeBezier.setControlPoints(point.getX(), point.getY());
+        }
+    }
+
+    private void resetBezierState() {
+        activeBezier = null;
+        bezierStage = BezierStage.NONE;
     }
 
     private void showSnapIndicator(Point2D point) {
