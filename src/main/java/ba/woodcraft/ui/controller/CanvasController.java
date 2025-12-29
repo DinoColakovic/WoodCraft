@@ -9,6 +9,9 @@ import ba.woodcraft.model.Drawable;
 import ba.woodcraft.model.FreehandShape;
 import ba.woodcraft.model.LineShape;
 import ba.woodcraft.model.RectangleShape;
+import ba.woodcraft.model.Material;
+import ba.woodcraft.dao.MaterialDAO;
+import ba.woodcraft.util.CurrentUser;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
@@ -18,6 +21,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.MouseEvent;
@@ -61,6 +65,7 @@ public class CanvasController {
     @FXML private ToggleButton circleTool;
     @FXML private ToggleButton bezierTool;
     @FXML private ToggleButton selectTool;
+    @FXML private ComboBox<Material> materialComboBox;
 
     private Tool activeTool = Tool.FREEHAND;
     private Drawable activeShape;
@@ -71,6 +76,8 @@ public class CanvasController {
     private Circle snapIndicator;
     private Point2D snapPoint;
     private final ExportServiceRegistry exportServiceRegistry = new ExportServiceRegistry();
+    private final MaterialDAO materialDAO = new MaterialDAO();
+    private Integer selectedMaterialId;
 
     private static final double SNAP_RADIUS = 10.0;
     private static final double SNAP_INDICATOR_RADIUS = 4.0;
@@ -162,6 +169,24 @@ public class CanvasController {
         leftRuler.widthProperty().addListener((obs, oldValue, newValue) -> drawRulers());
 
         applyZoom();
+        loadMaterials();
+    }
+
+    private void loadMaterials() {
+        Integer userId = CurrentUser.getId();
+        if (userId == null || materialComboBox == null) {
+            if (materialComboBox != null) {
+                materialComboBox.setDisable(true);
+            }
+            return;
+        }
+        materialComboBox.getItems().setAll(materialDAO.findMaterialsForUser(userId));
+        materialComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+            selectedMaterialId = newValue == null ? null : newValue.getId();
+        });
+        if (!materialComboBox.getItems().isEmpty()) {
+            materialComboBox.getSelectionModel().selectFirst();
+        }
     }
 
     private void allowDeselectToFreehand(ToggleButton btn, ToggleGroup group) {
@@ -211,6 +236,7 @@ public class CanvasController {
 
     @FXML
     public void onLogout() {
+        CurrentUser.clear();
         SceneNavigator.show("view/login.fxml");
     }
 
@@ -227,7 +253,7 @@ public class CanvasController {
             return;
         }
         try {
-            CanvasDocument document = new CanvasDocument(drawingPane, snapIndicator, selectionOverlay);
+            CanvasDocument document = new CanvasDocument(drawingPane, snapIndicator, selectionOverlay, selectedMaterialId);
             exportServiceRegistry.export(ExportFormat.PDF, document, file);
         } catch (IOException | IllegalStateException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to export PDF: " + ex.getMessage(), ButtonType.OK);
