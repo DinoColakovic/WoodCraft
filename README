@@ -9,7 +9,7 @@ Aplikacija je razvijena kao akademski projekat s fokusom na **MVC arhitekturu**,
 ## 🛠️ Tehnologije
 - **Java 21**
 - **JavaFX (FXML)**
-- **Gradle (Groovy DSL)**
+- **Maven**
 - **MySQL**
 - **JDBC**
 - **bcrypt** (hashiranje lozinki)
@@ -48,4 +48,4 @@ Pristup bazi podataka realizovan je kroz **DAO sloj**, čime je osigurana jasna 
 4. Pokrenuti aplikaciju:
 
 ```bash
-./gradlew run
+mvn javafx:run
