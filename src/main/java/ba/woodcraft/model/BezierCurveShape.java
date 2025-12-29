@@ -2,17 +2,21 @@ package ba.woodcraft.model;
 
 import javafx.scene.Node;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.CubicCurve;
+import javafx.scene.shape.QuadCurve;
 
 public class BezierCurveShape implements Drawable {
     private final double startX;
     private final double startY;
-    private final CubicCurve curve;
+    private final QuadCurve curve;
+    private double endX;
+    private double endY;
 
     public BezierCurveShape(double startX, double startY) {
         this.startX = startX;
         this.startY = startY;
-        this.curve = new CubicCurve();
+        this.endX = startX;
+        this.endY = startY;
+        this.curve = new QuadCurve();
         this.curve.setStartX(startX);
         this.curve.setStartY(startY);
         this.curve.setEndX(startX);
@@ -29,16 +33,21 @@ public class BezierCurveShape implements Drawable {
 
     @Override
     public void update(double x, double y) {
+        setEnd(x, y);
+        setControlPoints((startX + x) / 2.0, (startY + y) / 2.0);
+    }
+
+    public void setEnd(double x, double y) {
+        endX = x;
+        endY = y;
         curve.setStartX(startX);
         curve.setStartY(startY);
-        curve.setEndX(x);
-        curve.setEndY(y);
+        curve.setEndX(endX);
+        curve.setEndY(endY);
+    }
 
-        double dx = x - startX;
-        double dy = y - startY;
-        curve.setControlX1(startX + dx * 0.33);
-        curve.setControlY1(startY + dy * 0.1);
-        curve.setControlX2(startX + dx * 0.66);
-        curve.setControlY2(startY + dy * 0.9);
+    public void setControlPoints(double controlX, double controlY) {
+        curve.setControlX(controlX);
+        curve.setControlY(controlY);
     }
 }
