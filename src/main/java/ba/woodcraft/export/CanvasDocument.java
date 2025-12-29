@@ -13,11 +13,13 @@ public class CanvasDocument {
     private final Pane drawingPane;
     private final Node snapIndicator;
     private final SelectionOverlay selectionOverlay;
+    private final Integer materialId;
 
-    public CanvasDocument(Pane drawingPane, Node snapIndicator, SelectionOverlay selectionOverlay) {
+    public CanvasDocument(Pane drawingPane, Node snapIndicator, SelectionOverlay selectionOverlay, Integer materialId) {
         this.drawingPane = Objects.requireNonNull(drawingPane, "drawingPane");
         this.snapIndicator = Objects.requireNonNull(snapIndicator, "snapIndicator");
         this.selectionOverlay = selectionOverlay;
+        this.materialId = materialId;
     }
 
     public double getWidth() {
@@ -43,5 +45,9 @@ public class CanvasDocument {
             nodes.add(node);
         }
         return nodes;
+    }
+
+    public Integer getMaterialId() {
+        return materialId;
     }
 }

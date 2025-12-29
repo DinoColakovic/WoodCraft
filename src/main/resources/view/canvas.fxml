@@ -28,6 +28,11 @@
 
                 <Separator orientation="VERTICAL"/>
 
+                <Label text="Material:"/>
+                <ComboBox fx:id="materialComboBox" prefWidth="180"/>
+
+                <Separator orientation="VERTICAL"/>
+
                 <Button text="Clear" onAction="#onClear"/>
                 <Button text="Export PDF" onAction="#onExportPdf"/>
                 <Button text="Logout" onAction="#onLogout"/>

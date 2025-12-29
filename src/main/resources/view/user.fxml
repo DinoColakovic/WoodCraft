@@ -1,15 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.*?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.*?>
 
 <VBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="ba.woodcraft.ui.controller.UserController"
-      alignment="CENTER" spacing="12">
+      alignment="CENTER" spacing="12" prefWidth="900">
 
     <Label text="User Dashboard" />
     <Label fx:id="welcomeLabel" text="Dobrodošli!" />
 
     <Button text="Open Canvas" onAction="#onOpenCanvas" maxWidth="200"/>
+
+    <Separator/>
+
+    <Label text="Materials" />
+    <GridPane hgap="8" vgap="8" alignment="CENTER">
+        <columnConstraints>
+            <ColumnConstraints minWidth="140"/>
+            <ColumnConstraints minWidth="220"/>
+        </columnConstraints>
+        <rowConstraints>
+            <RowConstraints minHeight="28"/>
+            <RowConstraints minHeight="28"/>
+            <RowConstraints minHeight="28"/>
+            <RowConstraints minHeight="28"/>
+        </rowConstraints>
+
+        <Label text="Name:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="nameField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Thickness:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="thicknessField" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Cost per area:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <TextField fx:id="costPerAreaField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+        <Label text="Cost per volume:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <TextField fx:id="costPerVolumeField" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+    </GridPane>
+
+    <HBox spacing="8" alignment="CENTER">
+        <Button text="Add Material" onAction="#onAddMaterial" />
+        <Button text="Remove Selected" onAction="#onRemoveMaterial" />
+    </HBox>
+
+    <TableView fx:id="materialTable" prefHeight="220" prefWidth="520">
+        <columns>
+            <TableColumn fx:id="nameColumn" text="Name" prefWidth="150"/>
+            <TableColumn fx:id="thicknessColumn" text="Thickness" prefWidth="100"/>
+            <TableColumn fx:id="costPerAreaColumn" text="Cost/Area" prefWidth="120"/>
+            <TableColumn fx:id="costPerVolumeColumn" text="Cost/Volume" prefWidth="120"/>
+        </columns>
+    </TableView>
+
     <Button text="Logout" onAction="#onLogout" maxWidth="200"/>
 </VBox>

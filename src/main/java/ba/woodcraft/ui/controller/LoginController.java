@@ -2,6 +2,7 @@ package ba.woodcraft.ui.controller;
 
 import ba.woodcraft.dao.UserDAO;
 import ba.woodcraft.util.PasswordUtil;
+import ba.woodcraft.util.CurrentUser;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -42,6 +43,7 @@ public class LoginController {
 
         // ✅ Redirect po ulozi
         String role = user.role();
+        CurrentUser.set(user);
 
         if ("ADMIN".equalsIgnoreCase(role)) {
             AdminController c = SceneNavigator.showWithController("view/admin.fxml");

@@ -3,6 +3,7 @@ package ba.woodcraft.ui.controller;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import ba.woodcraft.util.CurrentUser;
 
 public class AdminController {
 
@@ -14,6 +15,7 @@ public class AdminController {
 
     @FXML
     public void onLogout(ActionEvent event) {
+        CurrentUser.clear();
         SceneNavigator.show("view/login.fxml");
     }
 

@@ -9,6 +9,9 @@ import ba.woodcraft.model.Drawable;
 import ba.woodcraft.model.FreehandShape;
 import ba.woodcraft.model.LineShape;
 import ba.woodcraft.model.RectangleShape;
+import ba.woodcraft.model.Material;
+import ba.woodcraft.dao.MaterialDAO;
+import ba.woodcraft.util.CurrentUser;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
@@ -18,6 +21,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.MouseEvent;
@@ -61,6 +65,7 @@ public class CanvasController {
     @FXML private ToggleButton circleTool;
     @FXML private ToggleButton bezierTool;
     @FXML private ToggleButton selectTool;
+    @FXML private ComboBox<Material> materialComboBox;
 
     private Tool activeTool = Tool.FREEHAND;
     private Drawable activeShape;
@@ -71,6 +76,8 @@ public class CanvasController {
     private Circle snapIndicator;
     private Point2D snapPoint;
     private final ExportServiceRegistry exportServiceRegistry = new ExportServiceRegistry();
+    private final MaterialDAO materialDAO = new MaterialDAO();
+    private Integer selectedMaterialId;
 
     private static final double SNAP_RADIUS = 10.0;
     private static final double SNAP_INDICATOR_RADIUS = 4.0;
@@ -162,6 +169,24 @@ public class CanvasController {
         leftRuler.widthProperty().addListener((obs, oldValue, newValue) -> drawRulers());
 
         applyZoom();
+        loadMaterials();
+    }
+
+    private void loadMaterials() {
+        Integer userId = CurrentUser.getId();
+        if (userId == null || materialComboBox == null) {
+            if (materialComboBox != null) {
+                materialComboBox.setDisable(true);
+            }
+            return;
+        }
+        materialComboBox.getItems().setAll(materialDAO.findMaterialsForUser(userId));
+        materialComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+            selectedMaterialId = newValue == null ? null : newValue.getId();
+        });
+        if (!materialComboBox.getItems().isEmpty()) {
+            materialComboBox.getSelectionModel().selectFirst();
+        }
     }
 
     private void allowDeselectToFreehand(ToggleButton btn, ToggleGroup group) {
@@ -211,6 +236,7 @@ public class CanvasController {
 
     @FXML
     public void onLogout() {
+        CurrentUser.clear();
         SceneNavigator.show("view/login.fxml");
     }
 
@@ -227,7 +253,7 @@ public class CanvasController {
             return;
         }
         try {
-            CanvasDocument document = new CanvasDocument(drawingPane, snapIndicator, selectionOverlay);
+            CanvasDocument document = new CanvasDocument(drawingPane, snapIndicator, selectionOverlay, selectedMaterialId);
             exportServiceRegistry.export(ExportFormat.PDF, document, file);
         } catch (IOException | IllegalStateException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to export PDF: " + ex.getMessage(), ButtonType.OK);
@@ -263,8 +289,6 @@ public class CanvasController {
         Point2D p = snapPoint != null ? snapPoint : getCanvasPoint(event);
         if (activeTool == Tool.BEZIER) {
             handleBezierPress(p);
-            hideSnapIndicator();
-            return;
         } else {
             activeShape = createShape(p.getX(), p.getY());
             if (activeShape != null) drawingPane.getChildren().add(activeShape.getNode());
@@ -278,7 +302,6 @@ public class CanvasController {
             return;
         }
         if (activeTool == Tool.BEZIER) {
-            updateBezierPreview(getCanvasPoint(event));
             return;
         }
         if (activeShape != null) {
@@ -293,7 +316,6 @@ public class CanvasController {
             return;
         }
         if (activeTool == Tool.BEZIER) {
-            finalizeBezierStage();
             return;
         }
         if (activeShape != null) {
@@ -307,6 +329,7 @@ public class CanvasController {
     @FXML
     public void onMouseMoved(MouseEvent event) {
         if (activeTool == Tool.BEZIER && bezierStage != BezierStage.NONE) {
+            updateBezierPreview(getCanvasPoint(event));
             hideSnapIndicator();
             return;
         }
@@ -373,6 +396,17 @@ public class CanvasController {
             activeBezier = new BezierCurveShape(point.getX(), point.getY());
             drawingPane.getChildren().add(activeBezier.getNode());
             bezierStage = BezierStage.END;
+            return;
+        }
+        if (bezierStage == BezierStage.END && activeBezier != null) {
+            activeBezier.setEnd(point.getX(), point.getY());
+            bezierStage = BezierStage.CONTROL;
+            return;
+        }
+        if (bezierStage == BezierStage.CONTROL && activeBezier != null) {
+            activeBezier.setControlPoints(point.getX(), point.getY());
+            activeBezier = null;
+            bezierStage = BezierStage.NONE;
         }
     }
 
@@ -384,18 +418,6 @@ public class CanvasController {
             activeBezier.setEnd(point.getX(), point.getY());
         } else if (bezierStage == BezierStage.CONTROL) {
             activeBezier.setControlPoints(point.getX(), point.getY());
-        }
-    }
-
-    private void finalizeBezierStage() {
-        if (activeBezier == null) {
-            return;
-        }
-        if (bezierStage == BezierStage.END) {
-            bezierStage = BezierStage.CONTROL;
-        } else if (bezierStage == BezierStage.CONTROL) {
-            activeBezier = null;
-            bezierStage = BezierStage.NONE;
         }
     }
 
