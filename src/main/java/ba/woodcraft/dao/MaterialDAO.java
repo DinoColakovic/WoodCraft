@@ -95,29 +95,24 @@ public class MaterialDAO {
         }
     }
 
-    public boolean removeMaterialForUser(int userId, int materialId) {
-        String deleteLink = "DELETE FROM user_materials WHERE user_id = ? AND material_id = ?";
-        String usage = "SELECT COUNT(*) FROM user_materials WHERE material_id = ?";
-        String deleteMaterial = "DELETE FROM materials WHERE id = ?";
+    public Material findById(int id) {
+        String sql = "SELECT id, name, cost_per_area, cost_per_volume FROM materials WHERE id = ?";
         try (Connection connection = DBConnection.getConnection();
-             PreparedStatement deleteStmt = connection.prepareStatement(deleteLink);
-             PreparedStatement usageStmt = connection.prepareStatement(usage);
-             PreparedStatement deleteMaterialStmt = connection.prepareStatement(deleteMaterial)) {
-            deleteStmt.setInt(1, userId);
-            deleteStmt.setInt(2, materialId);
-            deleteStmt.executeUpdate();
-
-            usageStmt.setInt(1, materialId);
-            ResultSet rs = usageStmt.executeQuery();
-            if (rs.next() && rs.getInt(1) == 0) {
-                deleteMaterialStmt.setInt(1, materialId);
-                deleteMaterialStmt.executeUpdate();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            ResultSet rs = statement.executeQuery();
+            if (rs.next()) {
+                return new Material(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getDouble("cost_per_area"),
+                        rs.getDouble("cost_per_volume")
+                );
             }
-            return true;
         } catch (Exception e) {
-            logger.error("Failed to remove material {} for user {}", materialId, userId, e);
-            return false;
+            logger.error("Failed to load material {}", id, e);
         }
+        return null;
     }
 
     public Material findById(int id) {

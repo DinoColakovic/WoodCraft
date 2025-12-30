@@ -24,11 +24,6 @@ public class MainView {
         canvasTab.setClosable(false);
         tabs.getTabs().add(canvasTab);
 
-        UserMaterialView userMaterialView = new UserMaterialView();
-        Tab materialsTab = new Tab("Materials", userMaterialView.getRoot());
-        materialsTab.setClosable(false);
-        tabs.getTabs().add(materialsTab);
-
         if (Session.getUser() != null && Session.getUser().getRole() == Role.ADMIN) {
             AdminMaterialView adminMaterialView = new AdminMaterialView();
             Tab adminTab = new Tab("Materials (Admin)", adminMaterialView.getRoot());

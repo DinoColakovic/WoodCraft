@@ -20,10 +20,6 @@ public class ShapeModel {
         points.set(index, point);
     }
 
-    public void removePoint(int index) {
-        points.remove(index);
-    }
-
     public double getThicknessMeters() {
         return thicknessMeters;
     }

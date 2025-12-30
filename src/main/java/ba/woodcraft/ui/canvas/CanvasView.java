@@ -30,7 +30,6 @@ public class CanvasView {
     private static final double DEFAULT_SCALE = 120.0;
     private static final double NODE_RADIUS = 4.5;
     private static final double CLOSE_DISTANCE_PX = 10.0;
-    private static final double PAN_MIN_DELTA = 0.1;
 
     private final BorderPane root = new BorderPane();
     private final Canvas canvas = new Canvas(900, 650);
@@ -42,13 +41,9 @@ public class CanvasView {
     private double scale = DEFAULT_SCALE;
     private double canvasWidthMeters = 6;
     private double canvasHeightMeters = 4;
-    private Point2D panOffset = new Point2D(0, 0);
-    private Point2D panStart;
 
     private ShapeModel selectedShape;
     private DragState dragState;
-    private DragState selectedNode;
-    private Mode mode = Mode.DRAW;
 
     private final ComboBox<Material> materialCombo = new ComboBox<>();
     private final TextField thicknessField = new TextField();
@@ -77,22 +72,6 @@ public class CanvasView {
         Button exportPdf = new Button("Export PDF");
         Button save = new Button("Save");
         Button load = new Button("Load");
-        Button deleteNode = new Button("Delete Node");
-
-        ToggleButton drawMode = new ToggleButton("Draw Nodes");
-        ToggleButton selectMode = new ToggleButton("Select/Move");
-        ToggleGroup modeGroup = new ToggleGroup();
-        drawMode.setToggleGroup(modeGroup);
-        selectMode.setToggleGroup(modeGroup);
-        drawMode.setSelected(true);
-        modeGroup.selectedToggleProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue == selectMode) {
-                mode = Mode.SELECT;
-            } else {
-                mode = Mode.DRAW;
-                selectedNode = null;
-            }
-        });
 
         applySize.setOnAction(event -> {
             Double width = parseDouble(widthField.getText());
@@ -119,18 +98,15 @@ public class CanvasView {
             }
         });
 
-        deleteNode.setOnAction(event -> deleteSelectedNode());
-
         save.setOnAction(event -> handleSave());
         load.setOnAction(event -> handleLoad());
 
         HBox box = new HBox(10,
-                drawMode, selectMode,
                 new Label("Width (m)"), widthField,
                 new Label("Height (m)"), heightField,
                 applySize,
                 new Label("Project"), projectField,
-                save, load, deleteNode,
+                save, load,
                 exportPdf);
         box.setPadding(new Insets(10));
         return box;
@@ -187,42 +163,17 @@ public class CanvasView {
         canvas.setWidth(canvasWidthMeters * scale);
         canvas.setHeight(canvasHeightMeters * scale);
         canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
-            if (event.getButton() == MouseButton.MIDDLE) {
-                panStart = new Point2D(event.getX(), event.getY());
-                event.consume();
+            if (event.getButton() != MouseButton.PRIMARY) {
                 return;
             }
-            if (event.getButton() == MouseButton.PRIMARY && mode == Mode.SELECT) {
-                Point2D click = new Point2D(event.getX(), event.getY());
-                DragState hitNode = findNodeAt(click);
-                if (hitNode != null) {
-                    dragState = hitNode;
-                    selectedNode = hitNode;
-                    selectedShape = hitNode.shape;
-                    event.consume();
-                    return;
-                }
-                selectedNode = null;
-                ShapeModel hitShape = findShapeAt(click);
-                if (hitShape != null) {
-                    selectShape(hitShape);
-                    redraw();
-                    event.consume();
-                }
+            Point2D click = new Point2D(event.getX(), event.getY());
+            DragState hitNode = findNodeAt(click);
+            if (hitNode != null) {
+                dragState = hitNode;
+                event.consume();
             }
         });
         canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, event -> {
-            if (panStart != null && event.getButton() == MouseButton.MIDDLE) {
-                Point2D current = new Point2D(event.getX(), event.getY());
-                Point2D delta = current.subtract(panStart);
-                if (Math.abs(delta.getX()) > PAN_MIN_DELTA || Math.abs(delta.getY()) > PAN_MIN_DELTA) {
-                    panOffset = panOffset.add(delta);
-                    panStart = current;
-                    redraw();
-                }
-                event.consume();
-                return;
-            }
             if (dragState == null) {
                 return;
             }
@@ -235,15 +186,12 @@ public class CanvasView {
             }
             redraw();
         });
-        canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, event -> {
-            dragState = null;
-            panStart = null;
-        });
+        canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, event -> dragState = null);
         canvas.setOnMouseClicked(event -> {
             if (event.getButton() != MouseButton.PRIMARY) {
                 return;
             }
-            if (dragState != null || mode == Mode.SELECT) {
+            if (dragState != null) {
                 return;
             }
             Point2D click = new Point2D(event.getX(), event.getY());
@@ -343,30 +291,25 @@ public class CanvasView {
         }
 
         drawDraft(gc);
-        drawSelection(gc);
     }
 
     private void drawGrid(GraphicsContext gc) {
         gc.setStroke(Color.web("#e0e0e0"));
         gc.setLineWidth(1);
         double tick = scale * 0.5;
-        double startX = (panOffset.getX() % tick + tick) % tick;
-        double startY = (panOffset.getY() % tick + tick) % tick;
-        for (double x = startX; x <= canvas.getWidth(); x += tick) {
+        for (double x = 0; x <= canvas.getWidth(); x += tick) {
             gc.strokeLine(x, 0, x, canvas.getHeight());
         }
-        for (double y = startY; y <= canvas.getHeight(); y += tick) {
+        for (double y = 0; y <= canvas.getHeight(); y += tick) {
             gc.strokeLine(0, y, canvas.getWidth(), y);
         }
         gc.setFill(Color.web("#888"));
         gc.setFont(Font.font(10));
-        for (double x = startX; x <= canvas.getWidth(); x += tick) {
-            double meters = (x - panOffset.getX()) / scale;
-            gc.fillText(String.format("%.1f", meters), x + 2, 12);
+        for (double x = 0; x <= canvas.getWidth(); x += tick) {
+            gc.fillText(String.format("%.1f", x / scale), x + 2, 12);
         }
-        for (double y = startY; y <= canvas.getHeight(); y += tick) {
-            double meters = (y - panOffset.getY()) / scale;
-            gc.fillText(String.format("%.1f", meters), 2, y - 2);
+        for (double y = 0; y <= canvas.getHeight(); y += tick) {
+            gc.fillText(String.format("%.1f", y / scale), 2, y - 2);
         }
     }
 
@@ -438,20 +381,6 @@ public class CanvasView {
         }
     }
 
-    private void drawSelection(GraphicsContext gc) {
-        if (selectedNode == null) {
-            return;
-        }
-        PointM point = selectedNode.shape == null
-                ? draftPoints.get(selectedNode.index)
-                : selectedNode.shape.getPoints().get(selectedNode.index);
-        Point2D px = toPixels(point);
-        gc.setStroke(Color.web("#d32f2f"));
-        gc.setLineWidth(2.0);
-        gc.strokeOval(px.getX() - NODE_RADIUS * 1.6, px.getY() - NODE_RADIUS * 1.6,
-                NODE_RADIUS * 3.2, NODE_RADIUS * 3.2);
-    }
-
     private Point2D resolveLabelPosition(Point2D mid, Vector2D normal, List<Rectangle2D> labelBounds, String text) {
         double offset = 12;
         double width = text.length() * 6.5;
@@ -474,13 +403,11 @@ public class CanvasView {
     }
 
     private PointM toMeters(Point2D pointPx) {
-        return new PointM((pointPx.getX() - panOffset.getX()) / scale,
-                (pointPx.getY() - panOffset.getY()) / scale);
+        return new PointM(pointPx.getX() / scale, pointPx.getY() / scale);
     }
 
     private Point2D toPixels(PointM pointM) {
-        return new Point2D(pointM.getXMeters() * scale + panOffset.getX(),
-                pointM.getYMeters() * scale + panOffset.getY());
+        return new Point2D(pointM.getXMeters() * scale, pointM.getYMeters() * scale);
     }
 
     private Double parseDouble(String value) {
@@ -568,29 +495,6 @@ public class CanvasView {
             }
         }
         return null;
-    }
-
-    private void deleteSelectedNode() {
-        if (selectedNode == null) {
-            alert("Select a node to delete.");
-            return;
-        }
-        if (selectedNode.shape == null) {
-            draftPoints.remove(selectedNode.index);
-        } else {
-            if (selectedNode.shape.getPoints().size() <= 3) {
-                alert("A shape must have at least 3 nodes.");
-                return;
-            }
-            selectedNode.shape.removePoint(selectedNode.index);
-        }
-        selectedNode = null;
-        redraw();
-    }
-
-    private enum Mode {
-        DRAW,
-        SELECT
     }
 
     private static class DragState {
