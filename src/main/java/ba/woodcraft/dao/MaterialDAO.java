@@ -114,4 +114,24 @@ public class MaterialDAO {
         }
         return null;
     }
+
+    public Material findById(int id) {
+        String sql = "SELECT id, name, cost_per_area, cost_per_volume FROM materials WHERE id = ?";
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            ResultSet rs = statement.executeQuery();
+            if (rs.next()) {
+                return new Material(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getDouble("cost_per_area"),
+                        rs.getDouble("cost_per_volume")
+                );
+            }
+        } catch (Exception e) {
+            logger.error("Failed to load material {}", id, e);
+        }
+        return null;
+    }
 }
