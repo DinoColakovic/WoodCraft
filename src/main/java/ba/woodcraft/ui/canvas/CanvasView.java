@@ -1,5 +1,6 @@
 package ba.woodcraft.ui.canvas;
 
+import ba.woodcraft.dao.DrawingDAO;
 import ba.woodcraft.dao.MaterialDAO;
 import ba.woodcraft.model.Material;
 import ba.woodcraft.model.PointM;
@@ -7,10 +8,12 @@ import ba.woodcraft.model.ShapeModel;
 import ba.woodcraft.ui.Session;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -33,17 +36,21 @@ public class CanvasView {
     private final List<PointM> draftPoints = new ArrayList<>();
     private final List<ShapeModel> shapes = new ArrayList<>();
     private final MaterialDAO materialDAO = new MaterialDAO();
+    private final DrawingDAO drawingDAO = new DrawingDAO();
 
     private double scale = DEFAULT_SCALE;
     private double canvasWidthMeters = 6;
     private double canvasHeightMeters = 4;
 
     private ShapeModel selectedShape;
+    private DragState dragState;
 
     private final ComboBox<Material> materialCombo = new ComboBox<>();
     private final TextField thicknessField = new TextField();
     private final Label areaLabel = new Label("Area: 0.00 m²");
     private final Label priceLabel = new Label("Price: 0.00");
+
+    private final TextField projectField = new TextField("Untitled");
 
     public CanvasView() {
         setupCanvas();
@@ -63,6 +70,8 @@ public class CanvasView {
         TextField heightField = new TextField(String.valueOf(canvasHeightMeters));
         Button applySize = new Button("Apply Canvas Size (m)");
         Button exportPdf = new Button("Export PDF");
+        Button save = new Button("Save");
+        Button load = new Button("Load");
 
         applySize.setOnAction(event -> {
             Double width = parseDouble(widthField.getText());
@@ -89,10 +98,15 @@ public class CanvasView {
             }
         });
 
+        save.setOnAction(event -> handleSave());
+        load.setOnAction(event -> handleLoad());
+
         HBox box = new HBox(10,
                 new Label("Width (m)"), widthField,
                 new Label("Height (m)"), heightField,
                 applySize,
+                new Label("Project"), projectField,
+                save, load,
                 exportPdf);
         box.setPadding(new Insets(10));
         return box;
@@ -148,8 +162,36 @@ public class CanvasView {
     private void setupCanvas() {
         canvas.setWidth(canvasWidthMeters * scale);
         canvas.setHeight(canvasHeightMeters * scale);
+        canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.getButton() != MouseButton.PRIMARY) {
+                return;
+            }
+            Point2D click = new Point2D(event.getX(), event.getY());
+            DragState hitNode = findNodeAt(click);
+            if (hitNode != null) {
+                dragState = hitNode;
+                event.consume();
+            }
+        });
+        canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, event -> {
+            if (dragState == null) {
+                return;
+            }
+            Point2D point = new Point2D(event.getX(), event.getY());
+            PointM moved = toMeters(point);
+            if (dragState.shape == null) {
+                draftPoints.set(dragState.index, moved);
+            } else {
+                dragState.shape.replacePoint(dragState.index, moved);
+            }
+            redraw();
+        });
+        canvas.addEventHandler(MouseEvent.MOUSE_RELEASED, event -> dragState = null);
         canvas.setOnMouseClicked(event -> {
             if (event.getButton() != MouseButton.PRIMARY) {
+                return;
+            }
+            if (dragState != null) {
                 return;
             }
             Point2D click = new Point2D(event.getX(), event.getY());
@@ -276,6 +318,7 @@ public class CanvasView {
         if (points.size() < 3) {
             return;
         }
+        List<Rectangle2D> labelBounds = new ArrayList<>();
         double[] xs = new double[points.size()];
         double[] ys = new double[points.size()];
         for (int i = 0; i < points.size(); i++) {
@@ -289,10 +332,10 @@ public class CanvasView {
         gc.fillPolygon(xs, ys, points.size());
         gc.strokePolygon(xs, ys, points.size());
 
-        drawDimensions(gc, points);
+        drawDimensions(gc, points, labelBounds);
     }
 
-    private void drawDimensions(GraphicsContext gc, List<PointM> points) {
+    private void drawDimensions(GraphicsContext gc, List<PointM> points, List<Rectangle2D> labelBounds) {
         gc.setStroke(Color.web("#424242"));
         gc.setFill(Color.web("#424242"));
         gc.setFont(Font.font(11));
@@ -301,6 +344,9 @@ public class CanvasView {
             Point2D a = toPixels(points.get(i));
             Point2D b = toPixels(points.get((i + 1) % count));
             double lengthMeters = a.distance(b) / scale;
+            if (lengthMeters < 0.05) {
+                continue;
+            }
             Point2D mid = a.midpoint(b);
 
             Vector2D direction = new Vector2D(b.getX() - a.getX(), b.getY() - a.getY());
@@ -308,7 +354,7 @@ public class CanvasView {
             if (normal.getNorm() > 0) {
                 normal = normal.normalize().scalarMultiply(14);
             }
-            Point2D labelPos = new Point2D(mid.getX() + normal.getX(), mid.getY() + normal.getY());
+            Point2D labelPos = resolveLabelPosition(mid, normal, labelBounds, String.format("%.2f m", lengthMeters));
 
             gc.strokeLine(a.getX(), a.getY(), b.getX(), b.getY());
             gc.fillText(String.format("%.2f m", lengthMeters), labelPos.getX(), labelPos.getY());
@@ -333,6 +379,27 @@ public class CanvasView {
             gc.setStroke(Color.web("#ef6c00"));
             gc.strokeOval(px.getX() - NODE_RADIUS, px.getY() - NODE_RADIUS, NODE_RADIUS * 2, NODE_RADIUS * 2);
         }
+    }
+
+    private Point2D resolveLabelPosition(Point2D mid, Vector2D normal, List<Rectangle2D> labelBounds, String text) {
+        double offset = 12;
+        double width = text.length() * 6.5;
+        double height = 12;
+        for (int i = 0; i < 6; i++) {
+            double dx = normal.getX() * (offset / 14.0);
+            double dy = normal.getY() * (offset / 14.0);
+            Point2D candidate = new Point2D(mid.getX() + dx, mid.getY() + dy);
+            Rectangle2D bounds = new Rectangle2D(candidate.getX(), candidate.getY() - height, width, height);
+            boolean overlaps = labelBounds.stream().anyMatch(bounds::intersects);
+            if (!overlaps) {
+                labelBounds.add(bounds);
+                return candidate;
+            }
+            offset += 10;
+        }
+        Point2D fallback = new Point2D(mid.getX() + normal.getX(), mid.getY() + normal.getY());
+        labelBounds.add(new Rectangle2D(fallback.getX(), fallback.getY() - height, width, height));
+        return fallback;
     }
 
     private PointM toMeters(Point2D pointPx) {
@@ -367,5 +434,76 @@ public class CanvasView {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void handleSave() {
+        if (Session.getUser() == null) {
+            alert("Log in first.");
+            return;
+        }
+        String name = projectField.getText().trim();
+        if (name.isEmpty()) {
+            alert("Project name is required.");
+            return;
+        }
+        boolean saved = drawingDAO.saveDrawing(Session.getUser().getId(), name, canvasWidthMeters, canvasHeightMeters, shapes);
+        if (!saved) {
+            alert("Save failed. Check the logs for details.");
+        }
+    }
+
+    private void handleLoad() {
+        if (Session.getUser() == null) {
+            alert("Log in first.");
+            return;
+        }
+        String name = projectField.getText().trim();
+        if (name.isEmpty()) {
+            alert("Project name is required.");
+            return;
+        }
+        var drawing = drawingDAO.loadDrawing(Session.getUser().getId(), name);
+        if (drawing == null) {
+            alert("No saved project found.");
+            return;
+        }
+        canvasWidthMeters = drawing.getCanvasWidthMeters();
+        canvasHeightMeters = drawing.getCanvasHeightMeters();
+        canvas.setWidth(canvasWidthMeters * scale);
+        canvas.setHeight(canvasHeightMeters * scale);
+        shapes.clear();
+        shapes.addAll(drawing.getShapes());
+        draftPoints.clear();
+        selectedShape = null;
+        redraw();
+    }
+
+    private DragState findNodeAt(Point2D click) {
+        for (int i = 0; i < draftPoints.size(); i++) {
+            Point2D px = toPixels(draftPoints.get(i));
+            if (px.distance(click) <= NODE_RADIUS * 1.5) {
+                return new DragState(null, i);
+            }
+        }
+        for (ShapeModel shape : shapes) {
+            List<PointM> points = shape.getPoints();
+            for (int i = 0; i < points.size(); i++) {
+                Point2D px = toPixels(points.get(i));
+                if (px.distance(click) <= NODE_RADIUS * 1.5) {
+                    return new DragState(shape, i);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static class DragState {
+        private final ShapeModel shape;
+        private final int index;
+
+        private DragState(ShapeModel shape, int index) {
+            this.shape = shape;
+            this.index = index;
+        }
     }
 }

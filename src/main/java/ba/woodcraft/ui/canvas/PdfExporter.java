@@ -7,12 +7,15 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
 public class PdfExporter {
+    private static final Logger logger = LoggerFactory.getLogger(PdfExporter.class);
 
     public void export(File file, List<ShapeModel> shapes, double canvasWidthMeters, double canvasHeightMeters) {
         PDRectangle pageSize = PDRectangle.A4;
@@ -56,7 +59,7 @@ public class PdfExporter {
             }
             document.save(file);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("PDF export failed for {}", file, e);
         }
     }
 

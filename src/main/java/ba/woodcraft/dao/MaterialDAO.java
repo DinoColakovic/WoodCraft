@@ -2,6 +2,8 @@ package ba.woodcraft.dao;
 
 import ba.woodcraft.db.DBConnection;
 import ba.woodcraft.model.Material;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MaterialDAO {
+    private static final Logger logger = LoggerFactory.getLogger(MaterialDAO.class);
 
     public List<Material> listMaterialsForUser(int userId) {
         String sql = """
@@ -34,7 +37,7 @@ public class MaterialDAO {
                 ));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to list materials for user {}", userId, e);
         }
         return materials;
     }
@@ -54,7 +57,7 @@ public class MaterialDAO {
                 ));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to list materials.", e);
         }
         return materials;
     }
@@ -74,7 +77,7 @@ public class MaterialDAO {
                 return new Material(keys.getInt(1), name, costPerArea, costPerVolume);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to create material {}", name, e);
         }
         return null;
     }
@@ -87,8 +90,28 @@ public class MaterialDAO {
             statement.setInt(2, materialId);
             return statement.executeUpdate() >= 0;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to assign material {} to user {}", materialId, userId, e);
             return false;
         }
+    }
+
+    public Material findById(int id) {
+        String sql = "SELECT id, name, cost_per_area, cost_per_volume FROM materials WHERE id = ?";
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, id);
+            ResultSet rs = statement.executeQuery();
+            if (rs.next()) {
+                return new Material(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getDouble("cost_per_area"),
+                        rs.getDouble("cost_per_volume")
+                );
+            }
+        } catch (Exception e) {
+            logger.error("Failed to load material {}", id, e);
+        }
+        return null;
     }
 }

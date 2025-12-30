@@ -16,6 +16,10 @@ public class ShapeModel {
         return new ArrayList<>(points);
     }
 
+    public void replacePoint(int index, PointM point) {
+        points.set(index, point);
+    }
+
     public double getThicknessMeters() {
         return thicknessMeters;
     }

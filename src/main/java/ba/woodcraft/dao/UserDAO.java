@@ -4,6 +4,8 @@ import ba.woodcraft.db.DBConnection;
 import ba.woodcraft.model.Role;
 import ba.woodcraft.model.User;
 import org.mindrot.jbcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserDAO {
+    private static final Logger logger = LoggerFactory.getLogger(UserDAO.class);
 
     public boolean hasAnyUsers() {
         String sql = "SELECT COUNT(*) FROM users";
@@ -20,7 +23,7 @@ public class UserDAO {
             ResultSet rs = statement.executeQuery();
             return rs.next() && rs.getInt(1) > 0;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to check users.", e);
             return false;
         }
     }
@@ -45,7 +48,7 @@ public class UserDAO {
             Role role = Role.valueOf(rs.getString("role"));
             return new User(rs.getInt("id"), rs.getString("username"), role);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Login failed for user {}", username, e);
             return null;
         }
     }
@@ -59,7 +62,7 @@ public class UserDAO {
             statement.setString(3, role.name());
             return statement.executeUpdate() == 1;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to create user {}", username, e);
             return false;
         }
     }
@@ -78,7 +81,7 @@ public class UserDAO {
                 ));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to list users.", e);
         }
         return users;
     }

@@ -17,4 +17,16 @@ public final class DBConnection {
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
+
+    public static String getUrl() {
+        return URL;
+    }
+
+    public static String getUser() {
+        return USER;
+    }
+
+    public static String getPassword() {
+        return PASSWORD;
+    }
 }
