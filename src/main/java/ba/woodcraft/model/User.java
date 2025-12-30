@@ -1,17 +1,30 @@
 package ba.woodcraft.model;
 
 public class User {
-    private int id;
-    private String username;
-    private String passwordHash;
-    private String role;
+    private final int id;
+    private final String username;
+    private final Role role;
 
-    public User(int id, String username, String passwordHash, String role) {
+    public User(int id, String username, Role role) {
         this.id = id;
         this.username = username;
-        this.passwordHash = passwordHash;
         this.role = role;
     }
 
-    // getters & setters
+    public int getId() {
+        return id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    @Override
+    public String toString() {
+        return username + \" (\" + role + \")\";
+    }
 }
